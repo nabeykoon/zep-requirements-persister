@@ -1,0 +1,8 @@
+.env
+logs/
+zep-env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python

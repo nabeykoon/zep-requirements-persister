@@ -1,0 +1,24 @@
+# Zep configuration
+zep:
+  # API key should be in .env file
+  # Session and graph IDs for organizing requirements
+  session_id: "pet-store-requirements"  # Main session for thread-based requirements
+  user_id: "pet-store-knowledge"        # Graph ID for JSON-based product knowledge
+
+# JIRA configuration
+jira:
+  # Credentials should be in .env file
+  issues:
+    - PS-1
+    - PS-2
+    - PS-3
+    - PS-4
+
+# Confluence configuration
+confluence:
+  # Credentials should be in .env file
+  pages:
+    - id: "123456"
+      title: "Product Requirements Document"  # Optional, for reference
+    - id: "123457"
+      title: "API Documentation"
