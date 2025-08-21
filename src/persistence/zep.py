@@ -45,12 +45,12 @@ class ZepPersistence(BasePersistence):
         """
         super().__init__(config)
         
-        # Extract configuration with defaults
+        # Extract configuration (defaults are already set in config.py)
         zep_config = config.get('zep', {})
         self.api_key = zep_config.get('api_key', '')
-        self.project = zep_config.get('project', 'requirements')
-        self.session_id = zep_config.get('session_id', 'requirements-session')
-        self.graph_id = zep_config.get('user_id', 'requirements-knowledge')  # Used as graph ID for JSON data
+        self.project = zep_config.get('project')
+        self.session_id = zep_config.get('session_id')
+        self.graph_id = zep_config.get('graph_id')
         
         # Validate required configuration
         if not self.api_key:

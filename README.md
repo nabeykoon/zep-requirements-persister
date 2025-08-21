@@ -6,7 +6,27 @@ A Python utility to fetch requirements from JIRA and Confluence and persist them
 
 This utility helps you:
 1. Fetch specific JIRA issues and Confluence pages
-2. Transform them into formats compatible with Zep Cloud API v3.4.1
+2. Transform them into formats compatible w### Graph Operations Utility
+
+The `tools/graph_operations.py` script provides a simplified, focused approach to managing Zep graphs:
+
+1. **Find isolated nodes**: Finds nodes with no connections to other nodes
+2. **Find dangling edges**: Finds edges with missing source or target nodes
+3. **Delete node by UUID**: Deletes a specific node by its UUID
+4. **Delete edge by UUID**: Deletes a specific edge by its UUID
+5. **Delete all isolated nodes**: Batch deletion with confirmation prompt
+6. **Delete all dangling edges**: Batch deletion with confirmation prompt
+
+This utility is fully compatible with Zep Cloud API v3.4.1 and uses direct parameter configuration rather than relying on project-level configs.
+
+#### Important Terminology Change
+
+In v3.4.1, we've updated the terminology to be more accurate:
+
+- **Isolated Nodes**: Nodes that have no connections to any other nodes
+- **Dangling Edges**: Edges that are "dangling" because they refer to source or target nodes that don't exist
+
+This change makes the terminology more accurate and consistent with graph theory terminology.d API v3.4.1
 3. Persist the data to Zep's memory system (graph API for JSON or thread API for messages)
 4. Make them available for your AI agents to use for tasks like coding and testing
 
@@ -80,14 +100,16 @@ ZEP_API_KEY=your-zep-api-key
 
 ### Configuration File (config.yaml)
 
-Define which JIRA issues and Confluence pages to fetch in the `config/config.yaml` file:
+Define your configuration settings in the `config/config.yaml` file:
 
 ```yaml
 # Zep configuration
 zep:
   # API key should be in .env file
-  session_id: "pet-store-requirements"  # Main session for thread persistence
-  user_id: "pet-store-knowledge"        # Graph ID for JSON persistence
+  project: "pet-store"                  # Project/application name
+  session_id: "pet-store-requirements"  # Thread ID for message-based requirements
+  user_id: "pet-store-knowledge"        # User ID for JSON-based knowledge persistence
+  graph_id: "pet-store-knowledge"       # Graph ID for data organization (defaults to user_id)
 
 # JIRA configuration
 jira:
@@ -107,12 +129,86 @@ confluence:
     - id: "123457"
       title: "API Documentation"
 ```
-  project: "requirements"  # Default project name for organizing data
+
+### Zep Configuration Details
+
+The Zep configuration section contains several key settings:
+
+- **project**: Identifies the project or application name. Used as a namespace for organizing your data in Zep. Default value: `pet-store`.
+
+- **session_id**: The thread ID used for message-based persistence. This is used when storing requirements as conversational messages in Zep's thread system. Default value: `pet-store-requirements`.
+
+- **user_id**: The user ID used for JSON-based knowledge persistence. In Zep v3.4.1, this maps to the graph_id used for structured data storage. Default value: `pet-store-knowledge`.
+
+- **graph_id**: The graph ID for organizing knowledge data in Zep's graph system. If not specified, it defaults to the same value as `user_id`. This field was added for clarity in configuration but refers to the same underlying value. Default value: Same as `user_id`.
+
+All Zep configuration values have sensible defaults if not specified in the config file. The defaults are:
+```
+project: "pet-store"
+session_id: "pet-store-requirements"
+user_id: "pet-store-knowledge"
+graph_id: Same as user_id
+```
+
+#### Environment Variables and Configuration Precedence
+
+The configuration system follows these precedence rules:
+
+1. Command-line arguments (highest priority)
+2. Environment variables from `.env` file
+3. Config file values (`config.yaml`)
+4. Default values (lowest priority)
+
+While the `.env` file is primarily for credentials and API keys, you can also use environment variables to override configuration values for special use cases without modifying the config file:
+
+```
+# Override Zep configuration temporarily
+ZEP_PROJECT=special-project
+ZEP_SESSION_ID=temporary-session
+ZEP_USER_ID=custom-graph
 ```
 
 ## Usage
 
-### Basic Usage
+### Using the CLI Tool (Recommended)
+
+We provide a convenient CLI tool based on Click that makes it easy to run commands without having to remember all the parameters:
+
+```bash
+# Show help and available commands
+python cli.py --help
+
+# Run the main utility with JIRA source and JSON format
+python cli.py run main --source jira --json
+
+# Run with verbose logging
+python cli.py run main --verbose
+
+# Run with a specific configuration file
+python main.py --config custom_config.yaml
+
+# List all nodes in the knowledge graph
+python cli.py graph list-nodes
+
+# List nodes for a specific graph
+python cli.py graph list-nodes --graph_id custom-graph-id
+
+# Delete a specific node by UUID
+python cli.py graph delete-node --uuid your-node-uuid-here
+
+# Delete all isolated nodes
+python cli.py cleanup delete-isolated
+
+# Export the graph to a JSON file
+python cli.py cleanup export --output graph_backup.json
+```
+
+The CLI is organized into logical command groups:
+- `run`: Commands for running the main utility
+- `graph`: Commands for managing the knowledge graph
+- `cleanup`: Commands for cleaning up the knowledge graph
+
+### Basic Usage (Legacy Method)
 
 ```bash
 python main.py
@@ -143,6 +239,166 @@ Use a different config file:
 ```bash
 python -m main --config path/to/custom_config.yaml --json
 ```
+
+### Using Makefile Commands
+
+The project includes a Makefile with common commands for easier operation:
+
+```bash
+# Run the main script with JIRA JSON persistence
+make run-main
+
+# Run with verbose logging
+make run-main-verbose
+
+# List all nodes in the knowledge graph
+make graph-list-nodes
+
+# List all edges in the knowledge graph
+make graph-list-edges
+
+# List isolated nodes (nodes with no connections)
+make graph-list-isolated
+
+# Delete a specific node by UUID
+make delete-node UUID=your-node-uuid-here
+
+# Delete a specific edge by UUID
+make delete-edge UUID=your-edge-uuid-here
+```
+
+## Zep Cloud API Compatibility
+
+The utility has been updated to ensure compatibility with Zep Cloud API v3.4.1. Key changes include:
+
+1. **API Path Structure**: All API calls now use the correct namespace hierarchy:
+   - `client.graph.node.delete` instead of `client.graph.delete_node`
+   - `client.graph.edge.delete` instead of `client.graph.delete_edge`
+
+2. **Parameter Naming**: All API calls use the correct parameter names:
+   - `uuid_` instead of `uuid` for node and edge deletion
+   - `graph_id` for all graph-related operations
+
+3. **Fallback Mechanisms**: Added fallback mechanisms for operations that might not be fully supported:
+   - Node deletion with fallback to removing all connected edges
+   - Proper handling of different API response formats
+
+4. **Thread API Changes**: Updated thread operations to use the batch method for better compatibility
+   - `add_messages_batch()` is now used for persisting messages
+
+5. **Error Handling**: Enhanced error handling to properly identify API compatibility issues:
+   - Specific handling for 404 errors that might indicate API endpoint changes
+   - Better logging of authentication and authorization issues
+
+## Graph Management Tools
+
+The utility includes tools for managing and maintaining your Zep knowledge graph located in the `tools` directory.
+
+### Graph Operations Utility
+
+The `tools/graph_operations.py` script provides a simplified, focused approach to managing Zep graphs:
+
+1. **Find isolated nodes**: Finds nodes with no connections to other nodes
+2. **Find dangling edges**: Finds edges with missing source or target nodes (previously called "isolated edges")
+3. **Delete node by UUID**: Deletes a specific node by its UUID
+4. **Delete edge by UUID**: Deletes a specific edge by its UUID
+5. **Delete all isolated nodes**: Batch deletion with confirmation prompt
+6. **Delete all dangling edges**: Batch deletion with confirmation prompt
+
+This utility is fully compatible with Zep Cloud API v3.4.1 and uses direct parameter configuration rather than relying on project-level configs.
+
+#### Important Terminology Change
+
+In v3.4.1, we've updated the terminology to be more accurate:
+
+- **Isolated Nodes**: Nodes that have no connections to any other nodes
+- **Dangling Edges**: Edges that are "dangling" because they refer to source or target nodes that don't exist
+
+This change makes the terminology more accurate and consistent with graph theory terminology.
+
+#### Usage
+
+```bash
+# Find isolated nodes
+python -m tools.graph_operations --action find_isolated_nodes --graph_id my-graph
+
+# Find dangling edges
+python -m tools.graph_operations --action find_isolated_edges --graph_id my-graph
+
+# Delete a specific node
+python -m tools.graph_operations --action delete_node --uuid your-node-uuid --graph_id my-graph
+
+# Delete a specific edge
+python -m tools.graph_operations --action delete_edge --uuid your-edge-uuid --graph_id my-graph
+
+# Delete all isolated nodes (with confirmation)
+python -m tools.graph_operations --action delete_isolated_nodes --graph_id my-graph
+
+# Delete all dangling edges (with confirmation)
+python -m tools.graph_operations --action delete_isolated_edges --graph_id my-graph
+
+# Skip confirmation for bulk operations
+python -m tools.graph_operations --action delete_isolated_nodes --no-confirm --graph_id my-graph
+
+# Enable verbose logging
+python -m tools.graph_operations --action find_isolated_nodes --verbose
+```
+
+#### Example Usage
+
+We've included an example script in `examples/graph_cleanup.py` that demonstrates how to use the GraphOperations class to:
+
+1. Find isolated nodes and dangling edges in your knowledge graph
+2. Display information about them
+3. Optionally delete them
+
+This is a good starting point for understanding how to use the GraphOperations class in your own code:
+
+```bash
+python -m examples.graph_cleanup
+```
+
+The utility reads the Zep API key from the `src/.env` file and uses reasonable defaults for graph IDs.
+
+#### Key Features
+
+- **Better object handling**: Safely handles both dictionary objects and objects with attributes
+- **Confirmation for bulk operations**: Requires user confirmation before deleting multiple items
+- **Proper src/.env usage**: Uses the src/.env file for API key configuration
+- **Simplified interface**: Focused on the most important graph operations
+- **Improved error handling**: Better error messages and logging
+- **Example display**: Shows examples of items before confirmation
+
+#### Makefile Shortcuts for Graph Operations
+
+```bash
+# Find isolated nodes
+make find-isolated-nodes
+
+# Find dangling edges
+make find-dangling-edges
+
+# Delete a specific node by UUID
+make delete-node UUID=your-node-uuid-here
+
+# Delete all isolated nodes with confirmation
+make delete-isolated-nodes
+
+# Delete all dangling edges with confirmation
+make delete-dangling-edges
+
+# Export the graph to a JSON file
+make export-graph OUTPUT=graph_backup.json
+```
+
+### When to Use Graph Management Tools
+
+- **After bulk imports**: Clean up any isolated nodes or dangling edges that might have been created
+- **During troubleshooting**: Identify graph structure issues
+- **For graph maintenance**: Remove outdated or incorrect information
+- **When updating node structures**: Clean up old structure nodes after migrating to new formats
+- **Before major changes**: Export the graph for backup
+- **Pattern-based cleanup**: Remove all nodes from a specific source or type
 
 ## Architecture
 

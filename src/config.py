@@ -36,11 +36,15 @@ def load_config(config_path):
     config['confluence']['username'] = os.environ.get('CONFLUENCE_USERNAME')
     config['confluence']['api_token'] = os.environ.get('CONFLUENCE_API_TOKEN')
     
-    # Set default values for session and user IDs if not provided
+    # Set default values for Zep configuration if not provided
+    if 'project' not in config['zep']:
+        config['zep']['project'] = 'pet-store'
     if 'session_id' not in config['zep']:
-        config['zep']['session_id'] = 'product-requirements'
+        config['zep']['session_id'] = 'pet-store-requirements'
     if 'user_id' not in config['zep']:
-        config['zep']['user_id'] = 'product-knowledge'
+        config['zep']['user_id'] = 'pet-store-knowledge'
+    if 'graph_id' not in config['zep']:
+        config['zep']['graph_id'] = config['zep']['user_id']  # Use user_id as graph_id by default
     
     # Basic validation
     if not config['zep'].get('api_key'):
