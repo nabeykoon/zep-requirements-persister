@@ -1,11 +1,31 @@
 import logging
 import html2text
+import re
 from datetime import datetime
 from zep_cloud import Message
 
 logger = logging.getLogger(__name__)
 h = html2text.HTML2Text()
 h.ignore_links = False
+
+def extract_sections(content):
+    """Extract sections/headings from content for better structure."""
+    if not content:
+        return []
+
+    sections = []
+    # Look for heading patterns in HTML/markdown
+    heading_patterns = [
+        r'<h[1-6][^>]*>(.*?)</h[1-6]>',  # HTML headings
+        r'^#{1,6}\s+(.*)$',                # Markdown headings
+    ]
+
+    for pattern in heading_patterns:
+        matches = re.findall(pattern, content, re.MULTILINE | re.IGNORECASE)
+        if matches:
+            sections.extend(matches)
+
+    return sections[:10]  # Limit to first 10 sections
 
 def to_zep_message(confluence_page):
     """
@@ -49,16 +69,16 @@ def to_zep_message(confluence_page):
 def to_zep_json(confluence_page):
     """
     Transform a Confluence page to Zep JSON format for structured data.
-    
-    This function restructures Confluence pages to focus on the documentation content
-    rather than Confluence-specific metadata. The page ID is preserved in metadata but
-    not as a primary node in the graph.
+
+    This function restructures Confluence pages with rich metadata and content structure
+    to enhance AI understanding and searchability. Includes space, author, dates, labels,
+    version info, and extracted sections for better content organization.
 
     Args:
-        confluence_page (dict): Confluence page data, typically as returned by the Confluence API.
+        confluence_page (dict): Confluence page data with rich metadata from the connector.
 
     Returns:
-        dict: Zep JSON format compatible with the current Zep Cloud API.
+        dict: Zep JSON format with enhanced metadata compatible with Zep Cloud v3.4.1 API.
 
     Raises:
         Exception: If transformation fails.
@@ -71,20 +91,40 @@ def to_zep_json(confluence_page):
         title = confluence_page.get('title', 'Untitled')
         content = confluence_page.get('content', '')
         url = confluence_page.get('url', '')
+
+        # Extract rich metadata
+        space = confluence_page.get('space', '')
+        created_date = confluence_page.get('created_date', '')
+        last_modified = confluence_page.get('last_modified', '')
+        author = confluence_page.get('author', '')
+        labels = confluence_page.get('labels', [])
+        version = confluence_page.get('version', '')
         
         # Convert HTML to text if needed
         if content and isinstance(content, str) and ('<' in content and '>' in content):
             content = h.handle(content)
         
-        # Structure the data to focus on documentation content rather than Confluence metadata
+        # Extract sections from content for better structure
+        sections = extract_sections(content)
+
+        # Structure the data with rich metadata for better AI understanding
         structured_data = {
             "product_documentation": {
                 "title": title,
-                "content": content,
+                "content": {
+                    "full_text": content,
+                    "sections": sections
+                },
                 "metadata": {
                     "source": "Confluence",
                     "page_id": page_id,
-                    "url": url
+                    "space": space,
+                    "url": url,
+                    "author": author,
+                    "created_date": created_date,
+                    "last_modified": last_modified,
+                    "version": version,
+                    "labels": labels
                 }
             }
         }

@@ -55,7 +55,8 @@ class JiraConnector(BaseConnector):
 
         Returns:
             list: List of dictionaries with issue details (key, summary, description, type, url).
-                 The result includes only essential information as required by the transformers.
+                  The 'type' field contains the actual JIRA issue type (e.g., 'Bug', 'Story', 'Task').
+                  The result includes only essential information as required by the transformers.
                  
         Raises:
             ConnectionError: If not connected to JIRA. Call connect() first.
@@ -75,12 +76,12 @@ class JiraConnector(BaseConnector):
                 logger.info(f"Fetching JIRA issue {issue_key}")
                 issue = self.client.issue(issue_key)
                 
-                # Extract only title and description as specified
+                # Extract issue details including real issue type
                 result = {
                     'key': issue.key,
                     'summary': issue.fields.summary,
                     'description': issue.fields.description or '',
-                    'type': 'jira_issue',
+                    'type': issue.fields.issuetype.name,
                     'url': f"{self.base_url}/browse/{issue.key}"
                 }
                 

@@ -56,8 +56,10 @@ class ConfluenceConnector(BaseConnector):
                                 Example: [{'id': '123456'}, {'id': '123457', 'title': 'Optional Title'}]
 
         Returns:
-            list: List of dictionaries with page details (id, title, content, type, url).
-                 The result includes the entire page content in HTML format.
+            list: List of dictionaries with comprehensive page details including:
+                  - Basic: id, title, content, type, url
+                  - Metadata: space, created_date, last_modified, author, labels, version
+                  Content is in HTML format as retrieved from Confluence storage format.
                  
         Raises:
             ConnectionError: If not connected to Confluence. Call connect() first.
@@ -81,11 +83,17 @@ class ConfluenceConnector(BaseConnector):
                 # Get page content with body in storage format (HTML)
                 page = self.client.get_page_by_id(page_id, expand='body.storage')
                 
-                # Extract the entire page content as specified
+                # Extract comprehensive page information for rich metadata
                 result = {
                     'id': page_id,
                     'title': page.get('title', ''),
                     'content': page.get('body', {}).get('storage', {}).get('value', ''),
+                    'space': page.get('space', {}).get('name', ''),
+                    'created_date': page.get('createdDate', ''),
+                    'last_modified': page.get('lastModified', ''),
+                    'author': page.get('creator', {}).get('displayName', ''),
+                    'labels': [label['name'] for label in page.get('labels', [])],
+                    'version': page.get('version', {}).get('number', ''),
                     'type': 'confluence_page',
                     'url': f"{self.base_url}/pages/viewpage.action?pageId={page_id}"
                 }

@@ -70,7 +70,7 @@ def to_zep_json(jira_issue):
         issue_key = jira_issue.get('key', 'unknown')
         summary = jira_issue.get('summary', '')
         description = jira_issue.get('description', '')
-        issue_type = jira_issue.get('type', 'Unknown')
+        issue_type = jira_issue.get('type', 'Unknown')  # Now contains actual JIRA issue type (e.g., 'Bug', 'Story', 'Task')
         url = jira_issue.get('url', '')
         
         # Convert HTML to text if needed
